@@ -1,7 +1,12 @@
 // API client for the Qwen3-TTS Modal backend.
 // All requests go to the Modal-deployed FastAPI app.
 
-const API_URL: string = (import.meta.env.VITE_API_URL as string)?.trim() || "";
+// Public Modal endpoint — baked in as the default. Can be overridden at
+// build time by setting VITE_API_URL, or at runtime via the ⚙ Settings
+// panel (stored in localStorage).
+const DEFAULT_API_URL = "https://joshm071197--qwen3-tts-fastapi-app.modal.run";
+
+const API_URL: string = (import.meta.env.VITE_API_URL as string)?.trim() || DEFAULT_API_URL;
 
 export interface Speaker {
   id: string;
