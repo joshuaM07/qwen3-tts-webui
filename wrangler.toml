@@ -1,8 +1,13 @@
 name = "qwen3-tts-webui"
 compatibility_date = "2025-01-01"
 
+# Wrangler runs this build step automatically before deploying.
+# The CF dashboard's "Build command" is optional in the Workers+Assets
+# model — the canonical place for the build is here in wrangler.toml.
+[build]
+command = "npm run build"
+
 # Serve ./dist as static assets — no Worker script needed.
-# In wrangler 3.x, just specify the directory; no binding required for
-# assets-only Workers (binding is only needed if you fetch assets from JS).
+# main is intentionally omitted (assets-only Worker).
 [assets]
 directory = "./dist"
