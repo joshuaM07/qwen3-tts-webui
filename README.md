@@ -32,20 +32,21 @@ Browser ──> Cloudflare Pages (static UI)
 
 ```
 qwen3-tts/
-├── modal-backend/
-│   ├── app.py              ← FastAPI + Modal app, two GPU services
+├── modal-backend/            ← Modal app, L4 GPU, FastAPI
+│   ├── app.py
 │   └── requirements.txt
-├── frontend/               ← Vite + React + TypeScript + Tailwind
-│   ├── src/
-│   │   ├── App.tsx         ← Main UI
-│   │   ├── lib/api.ts      ← Modal API client
-│   │   └── index.css
-│   ├── package.json
-│   ├── wrangler.toml       ← Cloudflare Pages config
-│   └── vite.config.ts
-├── deploy.sh               ← One-shot deploy script
-├── .gitignore
-└── README.md
+├── src/                      ← React UI source
+│   ├── App.tsx
+│   ├── lib/api.ts
+│   └── index.css
+├── public/                   ← static assets (favicon, etc)
+├── package.json              ← Vite + React + Tailwind
+├── wrangler.toml             ← Cloudflare Pages config
+├── vite.config.ts
+├── index.html
+├── deploy.sh
+├── README.md
+└── .gitignore
 ```
 
 ## One-time setup (5 minutes)
@@ -106,7 +107,7 @@ The repo is ready for Cloudflare Pages to deploy directly from Git.
    - **Framework preset**: Vite
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-   - **Root directory**: `frontend`
+   - **Root directory**: *(leave blank — frontend is at repo root)*
 
 **4. Environment variables** (Advanced → Add variable):
    - **Name**: `VITE_API_URL`
@@ -120,8 +121,8 @@ step 4 it'll still work — the env var just lets you change the backend
 without redeploying.
 
 > **Note**: The repo's `wrangler.toml` has the Modal URL pre-filled at
-> `frontend/wrangler.toml`. If you fork or change Modal workspaces, edit that
-> file or override with the `VITE_API_URL` env var.
+> `wrangler.toml` (repo root). If you fork or change Modal workspaces, edit
+> that file or override with the `VITE_API_URL` env var.
 
 ### C. Or just run `deploy.sh` from the project root
 
@@ -178,7 +179,6 @@ cd modal-backend
 modal serve app.py
 
 # Terminal 2 — frontend
-cd frontend
 VITE_API_URL="https://<your-username>--qwen3-tts-fastapi-app.modal.run" npm run dev
 # → http://localhost:5173
 ```

@@ -22,7 +22,6 @@ fail()  { echo "${RED}✗${RESET} $*" >&2; exit 1; }
 
 # --- Pre-flight ---
 [[ -d modal-backend ]] || fail "modal-backend/ not found. Run from $ROOT"
-[[ -d frontend ]]      || fail "frontend/ not found. Run from $ROOT"
 command -v modal >/dev/null   || fail "modal CLI not installed. Run: pip install modal && modal setup"
 command -v npm >/dev/null    || fail "npm not installed. Install Node.js first"
 
@@ -65,7 +64,7 @@ done
 
 # --- Deploy frontend ---
 info "Building frontend with VITE_API_URL=${MODAL_URL}..."
-cd "$ROOT/frontend"
+cd "$ROOT"
 
 # Allow env var override
 if [[ -z "${VITE_API_URL:-}" ]]; then
