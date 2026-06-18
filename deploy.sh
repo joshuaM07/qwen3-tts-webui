@@ -77,13 +77,6 @@ if ! npx wrangler whoami >/dev/null 2>&1; then
   npx wrangler login
 fi
 
-# Update wrangler.toml with the URL so future deploys have it baked in
-if grep -q '^VITE_API_URL' wrangler.toml; then
-  sed -i.bak "s|^VITE_API_URL = .*|VITE_API_URL = \"${VITE_API_URL}\"|" wrangler.toml
-  rm -f wrangler.toml.bak
-  ok "Updated wrangler.toml VITE_API_URL"
-fi
-
 info "Deploying to Cloudflare Pages..."
 npm run build
 npx wrangler pages deploy dist --project-name=qwen3-tts-webui --commit-dirty=true 2>&1 | tail -20

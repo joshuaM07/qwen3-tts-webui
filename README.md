@@ -41,7 +41,6 @@ qwen3-tts/
 │   └── index.css
 ├── public/                   ← static assets (favicon, etc)
 ├── package.json              ← Vite + React + Tailwind
-├── wrangler.toml             ← Cloudflare Pages config
 ├── vite.config.ts
 ├── index.html
 ├── deploy.sh
@@ -109,20 +108,23 @@ The repo is ready for Cloudflare Pages to deploy directly from Git.
    - **Build output directory**: `dist`
    - **Root directory**: *(leave blank — frontend is at repo root)*
 
-**4. Environment variables** (Advanced → Add variable):
+**4. Environment variables** (Settings → Environment variables → Add variable):
    - **Name**: `VITE_API_URL`
    - **Value**: `https://joshm071197--qwen3-tts-fastapi-app.modal.run`
-   - Also add it to **Preview** environment if you want it on PR previews.
+   - **Environment**: Production (and Preview if you want it on PR previews)
+
+This env var gets baked into the JS bundle at build time. Without it the
+app falls back to a runtime Settings panel where the user enters the URL
+manually.
 
 **5. Click Save and Deploy.** First build takes ~30s, then it's live at `https://qwen3-tts-webui.pages.dev`.
 
-The `wrangler.toml` in the repo already has the URL baked in, so if you skip
-step 4 it'll still work — the env var just lets you change the backend
-without redeploying.
-
-> **Note**: The repo's `wrangler.toml` has the Modal URL pre-filled at
-> `wrangler.toml` (repo root). If you fork or change Modal workspaces, edit
-> that file or override with the `VITE_API_URL` env var.
+> **Note**: This repo does **not** ship a `wrangler.toml` — CF Pages for a
+> static Vite build doesn't need one. The Vite `name = ...` field at the
+> top of `wrangler.toml` makes wrangler treat the project as a Worker
+> (`wrangler deploy`), not a Pages project (`wrangler pages deploy`).
+> If you need one later, use the CF Pages dashboard to set env vars
+> instead.
 
 ### C. Or just run `deploy.sh` from the project root
 
