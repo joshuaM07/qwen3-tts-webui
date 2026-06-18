@@ -378,11 +378,11 @@ export default function App() {
             onChange={(e) => setText(e.target.value)}
             placeholder="Écrivez ou collez votre texte ici..."
             disabled={loading}
-            maxLength={2500}
+            maxLength={12000}
             style={{ fontFamily: "'Lora', Georgia, serif" }}
           />
           <div className="flex items-center justify-between mt-2 text-xs text-ink-500">
-            <span>{wordCount} mots · {charCount}/2500</span>
+            <span>{wordCount} mots · {charCount}/12000</span>
             {text && (
               <button
                 onClick={() => setText("")}
