@@ -8,3 +8,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
+
+// Register service worker for PWA / offline support.
+// Works on https:// (CF Workers gives us this for free) and localhost.
+// Silently no-ops on http:// over LAN — the app still works, just not offline.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((err) => console.warn("SW registration failed:", err));
+  });
+}

@@ -2,44 +2,66 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, API_BASE_URL, fileToBase64, Speaker } from "./lib/api";
 
 // ---------------------------------------------------------------------------
-// Local speaker metadata — keep in sync with modal-backend/app.py SPEAKERS list.
-// Hardcoded so the UI is instant on first paint; the /speakers endpoint is the
-// source of truth if you want to override at runtime.
+// Speaker metadata — keep in sync with modal-backend/app.py SPEAKERS list.
 // ---------------------------------------------------------------------------
 const SPEAKERS: Speaker[] = [
-  { id: "Vivian",   name: "Vivian",   lang: "Chinese",  desc: "Bright young female voice" },
-  { id: "Serena",   name: "Serena",   lang: "Chinese",  desc: "Warm, gentle young female voice" },
-  { id: "Uncle_Fu", name: "Uncle Fu", lang: "Chinese",  desc: "Seasoned male voice, mellow timbre" },
-  { id: "Dylan",    name: "Dylan",    lang: "Chinese",  desc: "Youthful Beijing male voice" },
-  { id: "Eric",     name: "Eric",     lang: "Chinese",  desc: "Lively Chengdu male voice" },
-  { id: "Ryan",     name: "Ryan",     lang: "English",  desc: "Dynamic male voice with rhythm" },
-  { id: "Aiden",    name: "Aiden",    lang: "English",  desc: "Sunny American male voice" },
-  { id: "Ono_Anna", name: "Ono Anna", lang: "Japanese", desc: "Playful Japanese female voice" },
-  { id: "Sohee",    name: "Sohee",    lang: "Korean",   desc: "Warm Korean female voice" },
+  { id: "Serena",   name: "Serena",   lang: "Chinese",  desc: "Warm, gentle — best for devotionals" },
+  { id: "Uncle_Fu", name: "Uncle Fu", lang: "Chinese",  desc: "Seasoned, mellow, deep" },
+  { id: "Vivian",   name: "Vivian",   lang: "Chinese",  desc: "Bright young female" },
+  { id: "Aiden",    name: "Aiden",    lang: "English",  desc: "Sunny, warm American male" },
+  { id: "Ryan",     name: "Ryan",     lang: "English",  desc: "Dynamic with rhythm" },
+  { id: "Sohee",    name: "Sohee",    lang: "Korean",   desc: "Warm Korean female" },
+  { id: "Ono_Anna", name: "Ono Anna", lang: "Japanese", desc: "Playful Japanese female" },
 ];
 
+// Sorted with French first since it's the default
 const LANGUAGES = [
-  "Chinese", "English", "Japanese", "Korean", "German",
-  "French", "Russian", "Portuguese", "Spanish", "Italian",
+  "French", "English", "Chinese", "Japanese", "Korean", "German",
+  "Spanish", "Italian", "Portuguese", "Russian",
 ];
 
-const SAMPLE_TEXTS: { lang: string; text: string }[] = [
-  { lang: "English",  text: "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs." },
-  { lang: "English",  text: "Hello! Welcome to Qwen3-TTS. I can speak in many languages and styles. Try changing the speaker or instruction below." },
-  { lang: "Chinese",  text: "你好！欢迎使用通义千问语音合成。我可以用多种语言和风格朗读文本。试试切换不同的说话人或风格指令。" },
-  { lang: "Japanese", text: "こんにちは！Qwen3-TTSへようこそ。多くの言語とスタイルでテキストを読み上げることができます。" },
-  { lang: "Korean",   text: "안녕하세요! Qwen3-TTS에 오신 것을 환영합니다. 다양한 언어와 스타일로 텍스트를 읽을 수 있습니다." },
+// Devotional preset texts — French first (the default)
+const DEVOTION_PRESETS: { label: string; lang: string; text: string; instruct: string }[] = [
+  {
+    label: "Psaume 23",
+    lang: "French",
+    instruct: "Parlez d'une voix calme, douce et apaisante, avec un ton dévotionnel et respectueux",
+    text: "L'Éternel est mon berger : je ne manquerai de rien. Il me fait reposer dans de verts pâturages, il me dirige près des eaux paisibles. Il restaure mon âme, il me conduit dans les sentiers de la justice, à cause de son nom. Quand je marche dans la vallée de l'ombre de la mort, je ne crains aucun mal, car tu es avec moi.",
+  },
+  {
+    label: "Prière du matin",
+    lang: "French",
+    instruct: "Parlez d'une voix douce, intime et contemplative, comme une prière personnelle",
+    text: "Seigneur, en ce nouveau jour, je remets ma vie entre tes mains. Guide mes pas, éclaire mes décisions, et donne-moi la force d'aimer ceux que tu mets sur mon chemin. Que ta paix habite mon cœur, aujourd'hui et toujours. Amen.",
+  },
+  {
+    label: "Méditation",
+    lang: "French",
+    instruct: "Parlez lentement, avec des pauses, dans un ton méditatif et apaisant",
+    text: "Respire profondément. Sente l'air qui entre et qui sort. Tu es ici, présent à ce moment. Laisse les pensées venir et repartir, comme des nuages dans le ciel. Tu n'as besoin de rien faire. Juste être. Juste respirer. Juste être.",
+  },
+  {
+    label: "Psaume 23 (EN)",
+    lang: "English",
+    instruct: "Speak in a calm, gentle, soothing devotional tone with reverence and warmth",
+    text: "The Lord is my shepherd, I shall not want. He makes me lie down in green pastures, he leads me beside quiet waters, he restores my soul. He guides me in paths of righteousness for his name's sake. Even though I walk through the valley of the shadow of death, I will fear no evil, for you are with me.",
+  },
+  {
+    label: "Empty — start writing",
+    lang: "French",
+    instruct: "Parlez d'une voix calme, douce et apaisante, avec un ton dévotionnel et respectueux",
+    text: "",
+  },
 ];
 
+// Calm-tone style presets
 const STYLE_PRESETS = [
-  { label: "(no instruction)", value: "" },
-  { label: "Speak in a very happy tone",        value: "Speak in a very happy tone" },
-  { label: "Speak in a calm, soothing tone",    value: "Speak in a calm, soothing tone" },
-  { label: "Speak with excitement and energy",  value: "Speak with excitement and energy" },
-  { label: "Speak slowly and clearly",          value: "Speak slowly and clearly" },
-  { label: "Whisper softly",                    value: "Whisper softly" },
-  { label: "Use a serious, news-anchor style",  value: "Use a serious, news-anchor style" },
-  { label: "Speak with a sad, gentle tone",     value: "Speak with a sad, gentle tone" },
+  { label: "Calm devotional (default)", value: "Parlez d'une voix calme, douce et apaisante, avec un ton dévotionnel et respectueux" },
+  { label: "Calm devotional (EN)",      value: "Speak in a calm, gentle, soothing devotional tone with reverence and warmth" },
+  { label: "Meditative / slow",          value: "Parlez lentement, avec des pauses, dans un ton méditatif et apaisant" },
+  { label: "Personal prayer (intimate)", value: "Parlez d'une voix douce, intime et contemplative, comme une prière personnelle" },
+  { label: "Soft whisper",               value: "Chuchotez doucement, comme si vous parliez à quelqu'un à côté de vous" },
+  { label: "Reverent reading",           value: "Lisez avec révérence, lentement et clairement, en marquant chaque phrase" },
 ];
 
 interface HistoryItem {
@@ -51,44 +73,44 @@ interface HistoryItem {
   url: string;
   durationMs: number;
   createdAt: number;
+  size: number;
 }
 
 // ---------------------------------------------------------------------------
 // Components
 // ---------------------------------------------------------------------------
-function Header({ onConfigureApi }: { onConfigureApi: () => void }) {
+function Header({ onConfigureApi, isOffline }: { onConfigureApi: () => void; isOffline: boolean }) {
   return (
-    <header className="border-b border-ink-800/60 backdrop-blur-sm bg-ink-950/60 sticky top-0 z-10">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 flex items-center justify-center shadow-lg shadow-accent-500/30">
-            <svg viewBox="0 0 32 32" className="w-5 h-5" fill="currentColor">
-              <path d="M9 11h2v10H9zm4-2h2v14h-2zm4 4h2v6h-2zm4-2h2v10h-2zm4 3h2v4h-2z" fill="white" />
+    <header className="border-b border-ink-800/60 backdrop-blur-sm bg-ink-950/80 sticky top-0 z-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 flex items-center justify-center shadow-lg shadow-accent-500/30">
+            <svg viewBox="0 0 32 32" className="w-4 h-4 sm:w-5 sm:h-5" fill="white">
+              <path d="M9 11h2v10H9zm4-2h2v14h-2zm4 4h2v6h-2zm4-2h2v10h-2zm4 3h2v4h-2z" />
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight">Qwen3-TTS</h1>
-            <p className="text-xs text-ink-400 -mt-0.5">Neural Voice Studio</p>
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight leading-none">Devotionals</h1>
+            <p className="text-[10px] sm:text-xs text-ink-400 mt-0.5">Qwen3-TTS · calm & soothing</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href="https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-ghost text-xs"
+          {isOffline && (
+            <span className="chip text-amber-300 bg-amber-500/10 border border-amber-500/30 text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              Hors ligne
+            </span>
+          )}
+          <button
+            onClick={onConfigureApi}
+            className="btn-ghost text-xs p-2 sm:px-3 sm:py-2"
+            aria-label="Paramètres"
+            title="Paramètres"
           >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zm0 7L2 14l10 5 10-5-10-5z" />
-            </svg>
-            Model
-          </a>
-          <button onClick={onConfigureApi} className="btn-ghost text-xs" title="Configure Modal backend URL">
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            Settings
           </button>
         </div>
       </div>
@@ -112,14 +134,9 @@ function ApiConfigModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="card max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-white mb-2">Configure Modal Backend</h2>
-        <p className="text-sm text-ink-400 mb-4">
-          Paste the URL of your deployed Modal FastAPI app. It looks like
-          <code className="mx-1 px-1.5 py-0.5 rounded bg-ink-800 text-accent-400 text-xs">
-            https://your-username--qwen3-tts-fastapi-app.modal.run
-          </code>
-        </p>
-        <label className="label">Modal API URL</label>
+        <h2 className="text-xl font-bold text-white mb-2">Backend API</h2>
+        <p className="text-sm text-ink-400 mb-4">Optionnel — l'URL est déjà configurée par défaut.</p>
+        <label className="label">URL de l'API Modal</label>
         <input
           type="url"
           className="input"
@@ -128,7 +145,7 @@ function ApiConfigModal({
           placeholder="https://..."
         />
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="btn-ghost">Cancel</button>
+          <button onClick={onClose} className="btn-ghost">Annuler</button>
           <button
             onClick={() => {
               const trimmed = url.trim();
@@ -137,7 +154,7 @@ function ApiConfigModal({
             }}
             className="btn-primary"
           >
-            Save
+            Enregistrer
           </button>
         </div>
       </div>
@@ -145,43 +162,26 @@ function ApiConfigModal({
   );
 }
 
-function SpeakerAvatar({ speaker }: { speaker: Speaker }) {
-  // Generate a stable color from speaker id
-  const hash = speaker.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const hue = (hash * 47) % 360;
-  const initials = speaker.name
-    .split(/[\s_-]+/)
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md flex-shrink-0"
-      style={{ background: `linear-gradient(135deg, hsl(${hue}, 65%, 55%), hsl(${(hue + 40) % 360}, 70%, 45%))` }}
-    >
-      {initials}
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Main studio
+// Main app
 // ---------------------------------------------------------------------------
 export default function App() {
-  // Start with the baked-in default URL. localStorage can override at runtime.
   const [apiUrl, setApiUrl] = useState<string>(
     () => localStorage.getItem("qwen3-tts-api-url") || API_BASE_URL
   );
   const effectiveApiUrl = apiUrl || API_BASE_URL;
   const [showSettings, setShowSettings] = useState(false);
-  const [text, setText] = useState(SAMPLE_TEXTS[1].text);
-  const [language, setLanguage] = useState("English");
-  const [speaker, setSpeaker] = useState("Ryan");
-  const [instruct, setInstruct] = useState("");
+
+  // Default preset is the French Psalm 23 (first in the list with text)
+  const defaultPreset = DEVOTION_PRESETS[0];
+  const [text, setText] = useState(defaultPreset.text);
+  const [language, setLanguage] = useState(defaultPreset.lang);
+  const [speaker, setSpeaker] = useState("Serena");
+  const [instruct, setInstruct] = useState(defaultPreset.instruct);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentAudio, setCurrentAudio] = useState<{ url: string; durationMs: number; size: number } | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<{ url: string; durationMs: number; size: number; blob: Blob } | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     try {
       const raw = localStorage.getItem("qwen3-tts-history");
@@ -190,41 +190,61 @@ export default function App() {
       return [];
     }
   });
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const abortRef = useRef<AbortController | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Save history to localStorage
+  // Online/offline indicator
+  useEffect(() => {
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  // Persist history
   useEffect(() => {
     try {
-      localStorage.setItem("qwen3-tts-history", JSON.stringify(history.slice(0, 20)));
+      localStorage.setItem("qwen3-tts-history", JSON.stringify(history.slice(0, 10)));
     } catch {
       /* quota — ignore */
     }
   }, [history]);
 
-  // Filter speakers by language for UX
+  // Filter speakers by language
   const speakersForLang = useMemo(
     () => SPEAKERS.filter((s) => s.lang === language),
-    [language],
+    [language]
   );
 
-  // Auto-pick first available speaker when language changes
+  // Auto-pick first available speaker when language changes (if current is not in list)
   useEffect(() => {
-    if (!speakersForLang.find((s) => s.id === speaker)) {
-      setSpeaker(speakersForLang[0]?.id || SPEAKERS[0].id);
+    if (speakersForLang.length > 0 && !speakersForLang.find((s) => s.id === speaker)) {
+      setSpeaker(speakersForLang[0].id);
     }
   }, [language, speakersForLang, speaker]);
 
   const charCount = text.length;
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
+  const loadPreset = (preset: typeof DEVOTION_PRESETS[number]) => {
+    setText(preset.text);
+    setLanguage(preset.lang);
+    setInstruct(preset.instruct);
+  };
+
   const handleGenerate = async () => {
     if (!text.trim()) {
-      setError("Please enter some text to synthesize.");
+      setError("Ajoutez du texte pour générer l'audio.");
       return;
     }
     if (!effectiveApiUrl) {
       setShowSettings(true);
-      setError("Configure your Modal backend URL first (Settings → Modal API URL).");
+      setError("Configurez l'URL du backend d'abord.");
       return;
     }
 
@@ -232,7 +252,6 @@ export default function App() {
     setLoading(true);
     setCurrentAudio(null);
 
-    // Custom timeout via AbortController
     const controller = new AbortController();
     abortRef.current = controller;
     const timeout = setTimeout(() => controller.abort(), 95_000);
@@ -244,7 +263,7 @@ export default function App() {
         speaker,
         instruct,
       });
-      setCurrentAudio({ url: result.url, durationMs: result.durationMs, size: result.blob.size });
+      setCurrentAudio({ url: result.url, durationMs: result.durationMs, size: result.blob.size, blob: result.blob });
 
       const item: HistoryItem = {
         id: crypto.randomUUID(),
@@ -254,12 +273,13 @@ export default function App() {
         instruct,
         url: result.url,
         durationMs: result.durationMs,
+        size: result.blob.size,
         createdAt: Date.now(),
       };
-      setHistory((h) => [item, ...h].slice(0, 20));
+      setHistory((h) => [item, ...h].slice(0, 10));
     } catch (e) {
       if ((e as Error).name === "AbortError") {
-        setError("Generation timed out (95s). The GPU may be cold-starting — try again.");
+        setError("Génération expirée (95s). Le GPU démarre peut-être — réessayez.");
       } else {
         setError((e as Error).message);
       }
@@ -282,38 +302,110 @@ export default function App() {
     a.click();
   };
 
+  const shareAudio = async (blob: Blob, filename: string, text: string) => {
+    const file = new File([blob], filename, { type: "audio/wav" });
+    const shareData: ShareData = {
+      files: [file],
+      title: "Devotional Audio",
+      text: text.slice(0, 140),
+    };
+    if (navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (e) {
+        // User cancelled or share failed — fall back to download
+        if ((e as Error).name !== "AbortError") {
+          downloadAudio(URL.createObjectURL(blob), filename);
+        }
+      }
+    } else {
+      // Web Share API not available (e.g. desktop) — just download
+      downloadAudio(URL.createObjectURL(blob), filename);
+    }
+  };
+
+  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onConfigureApi={() => setShowSettings(true)} />
+      <Header onConfigureApi={() => setShowSettings(true)} isOffline={isOffline} />
 
       {!effectiveApiUrl && (
         <div className="bg-accent-700/20 border-b border-accent-700/40 text-center py-2.5 px-4 text-sm text-accent-200">
-          ⚠ Backend not configured.{" "}
+          ⚠ Backend non configuré.{" "}
           <button
             onClick={() => setShowSettings(true)}
             className="underline font-semibold hover:text-white"
           >
-            Open Settings
-          </button>{" "}
-          to paste your Modal API URL.
+            Ouvrir les paramètres
+          </button>
         </div>
       )}
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 grid lg:grid-cols-[1fr_1.1fr] gap-6">
-        {/* LEFT: Controls */}
-        <section className="card animate-slide-up">
-          <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 pb-32 sm:pb-12 space-y-4 sm:space-y-6">
+
+        {/* PRESETS — quick devotional starters */}
+        <section className="card animate-slide-up !p-4 sm:!p-5">
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-accent-500"></span>
-            Voice Configuration
+            Préréglages
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {DEVOTION_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => loadPreset(p)}
+                disabled={loading}
+                className="chip hover:bg-accent-500/20 hover:text-accent-200 transition text-sm py-1.5 px-3 min-h-[36px]"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* TEXT INPUT — primary, takes most of the screen on mobile */}
+        <section className="card animate-slide-up !p-4 sm:!p-6" style={{ animationDelay: "40ms" }}>
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-500"></span>
+            Texte
+          </h2>
+          <textarea
+            className="input min-h-[180px] sm:min-h-[220px] resize-y font-serif text-base sm:text-lg leading-relaxed"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Écrivez ou collez votre texte ici..."
+            disabled={loading}
+            maxLength={2000}
+            style={{ fontFamily: "'Lora', Georgia, serif" }}
+          />
+          <div className="flex items-center justify-between mt-2 text-xs text-ink-500">
+            <span>{wordCount} mots · {charCount}/2000</span>
+            {text && (
+              <button
+                onClick={() => setText("")}
+                disabled={loading}
+                className="text-ink-500 hover:text-ink-300 text-xs"
+              >
+                Effacer
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* SETTINGS — collapsed on mobile (single row), full on desktop */}
+        <section className="card animate-slide-up !p-4 sm:!p-5" style={{ animationDelay: "80ms" }}>
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-500"></span>
+            Voix & ton
           </h2>
 
-          <div className="space-y-4">
-            {/* Language */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="label" htmlFor="language">Language</label>
+              <label className="label" htmlFor="lang">Langue</label>
               <select
-                id="language"
-                className="input cursor-pointer"
+                id="lang"
+                className="input cursor-pointer text-base py-3 min-h-[48px]"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 disabled={loading}
@@ -323,197 +415,192 @@ export default function App() {
                 ))}
               </select>
             </div>
-
-            {/* Speaker */}
             <div>
-              <label className="label" htmlFor="speaker">
-                Speaker
-                <span className="ml-2 normal-case text-ink-500 font-normal tracking-normal">
-                  ({speakersForLang.length} available for {language})
-                </span>
-              </label>
-              {speakersForLang.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {speakersForLang.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSpeaker(s.id)}
-                      disabled={loading}
-                      className={`flex items-center gap-3 p-2.5 rounded-lg border text-left transition-all
-                        ${speaker === s.id
-                          ? "border-accent-500 bg-accent-500/10"
-                          : "border-ink-700 hover:border-ink-600 bg-ink-900/40"
-                        }`}
-                    >
-                      <SpeakerAvatar speaker={s} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-white truncate">{s.name}</div>
-                        <div className="text-xs text-ink-400 truncate">{s.desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-ink-500 italic p-3 border border-dashed border-ink-700 rounded-lg">
-                  No preset speakers for {language} — pick a different language.
-                </div>
-              )}
-            </div>
-
-            {/* Style instruction */}
-            <div>
-              <label className="label" htmlFor="instruct">Style Instruction <span className="normal-case text-ink-500 font-normal">(optional)</span></label>
-              <input
-                id="instruct"
-                type="text"
-                className="input"
-                value={instruct}
-                onChange={(e) => setInstruct(e.target.value)}
-                placeholder="e.g. Speak in a happy tone"
+              <label className="label" htmlFor="spk">Voix</label>
+              <select
+                id="spk"
+                className="input cursor-pointer text-base py-3 min-h-[48px]"
+                value={speaker}
+                onChange={(e) => setSpeaker(e.target.value)}
                 disabled={loading}
-                list="style-presets"
-              />
-              <datalist id="style-presets">
-                {STYLE_PRESETS.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </datalist>
+              >
+                {speakersForLang.length > 0 ? (
+                  speakersForLang.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} — {s.desc}</option>
+                  ))
+                ) : (
+                  SPEAKERS.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.lang}) — {s.desc}</option>
+                  ))
+                )}
+              </select>
             </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="label" htmlFor="instr">Ton</label>
+            <input
+              id="instr"
+              type="text"
+              className="input text-base py-3 min-h-[48px]"
+              value={instruct}
+              onChange={(e) => setInstruct(e.target.value)}
+              placeholder="ex. Voix calme et apaisante"
+              disabled={loading}
+              list="style-presets"
+            />
+            <datalist id="style-presets">
+              {STYLE_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </datalist>
           </div>
         </section>
 
-        {/* RIGHT: Text + Output */}
-        <section className="card animate-slide-up" style={{ animationDelay: "60ms" }}>
-          <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-500"></span>
-            Script
-          </h2>
+        {/* ERROR */}
+        {error && (
+          <div className="p-3.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm animate-fade-in">
+            {error}
+          </div>
+        )}
 
-          <textarea
-            className="input min-h-[160px] resize-y font-medium leading-relaxed"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste the text you want to synthesize..."
-            disabled={loading}
-            maxLength={2000}
-          />
+        {/* CURRENT AUDIO — big, prominent save/share */}
+        {currentAudio && !loading && (
+          <section className="card animate-slide-up !p-4 sm:!p-6 border-accent-500/40 bg-accent-500/5">
+            <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Lecture
+            </h2>
 
-          <div className="flex items-center justify-between mt-2 text-xs text-ink-500">
-            <span>{wordCount} words · {charCount}/2000 chars</span>
-            <div className="flex flex-wrap gap-1">
-              {SAMPLE_TEXTS.filter((s) => s.lang === language || language === "English").slice(0, 3).map((s, i) => (
+            <audio
+              ref={audioRef}
+              src={currentAudio.url}
+              controls
+              autoPlay
+              className="w-full h-12 sm:h-10 mb-4"
+            />
+
+            {/* PRIMARY ACTION: Save (download) — big, finger-friendly */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                onClick={() => downloadAudio(currentAudio.url, `devotional-${speaker}-${Date.now()}.wav`)}
+                className="btn-primary py-4 sm:py-3 text-base font-semibold min-h-[52px]"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                Sauvegarder l'audio
+              </button>
+              {canShare ? (
                 <button
-                  key={i}
-                  onClick={() => setText(s.text)}
-                  className="chip hover:bg-ink-700 transition"
-                  disabled={loading}
+                  onClick={() => shareAudio(currentAudio.blob, `devotional-${speaker}-${Date.now()}.wav`, text)}
+                  className="btn-ghost py-4 sm:py-3 text-base font-semibold min-h-[52px]"
                 >
-                  Sample {i + 1}
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                  </svg>
+                  Partager
                 </button>
+              ) : (
+                <button
+                  onClick={() => downloadAudio(currentAudio.url, `devotional-${speaker}-${Date.now()}.wav`)}
+                  className="btn-ghost py-4 sm:py-3 text-base font-semibold min-h-[52px]"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                  </svg>
+                  Copier le lien
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-3 text-[10px] sm:text-xs text-ink-500">
+              <span className="chip">{(currentAudio.size / 1024).toFixed(1)} KB</span>
+              <span>·</span>
+              <span>Généré en {(currentAudio.durationMs / 1000).toFixed(1)}s</span>
+            </div>
+          </section>
+        )}
+
+        {/* HISTORY */}
+        {history.length > 0 && (
+          <section className="animate-slide-up">
+            <h3 className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2 px-1">
+              Récents
+            </h3>
+            <div className="space-y-2">
+              {history.map((h) => (
+                <div
+                  key={h.id}
+                  className="p-3 rounded-lg bg-ink-900/40 border border-ink-800 hover:border-ink-700 transition"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="chip text-[10px]">{h.language}</span>
+                    <span className="chip text-[10px]">{h.speaker}</span>
+                    <span className="text-[10px] text-ink-500 ml-auto">
+                      {new Date(h.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-300 line-clamp-2 mb-2 font-serif">{h.text}</p>
+                  <div className="flex items-center gap-2">
+                    <audio src={h.url} controls className="flex-1 h-8" />
+                    <button
+                      onClick={() => downloadAudio(h.url, `devotional-${h.speaker}-${h.createdAt}.wav`)}
+                      className="btn-ghost p-2 min-h-[36px] min-w-[36px]"
+                      aria-label="Sauvegarder"
+                      title="Sauvegarder"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
+            <button
+              onClick={() => setHistory([])}
+              className="text-[10px] text-ink-500 hover:text-ink-300 mt-2 px-1"
+            >
+              Effacer l'historique
+            </button>
+          </section>
+        )}
+      </main>
 
-          <button
-            onClick={handleGenerate}
-            disabled={loading || !text.trim()}
-            className="btn-primary w-full mt-5 py-3 text-base"
-          >
-            {loading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+      {/* STICKY GENERATE BUTTON — pinned to bottom on mobile for thumb reach */}
+      <div className="sticky bottom-0 left-0 right-0 z-10 p-3 sm:p-0 sm:relative sm:mt-6 bg-gradient-to-t from-ink-950 via-ink-950/95 to-transparent sm:bg-none">
+        <div className="max-w-3xl mx-auto">
+          {loading ? (
+            <div className="space-y-2">
+              <button
+                onClick={handleCancel}
+                className="w-full py-4 sm:py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 font-semibold text-base min-h-[56px] sm:min-h-[52px]"
+              >
+                <svg className="inline w-5 h-5 mr-2 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Synthesizing on GPU… (may take 15-30s on cold start)
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                Generate Speech
-              </>
-            )}
-          </button>
-
-          {loading && (
-            <button onClick={handleCancel} className="btn-ghost w-full mt-2 text-xs">
-              Cancel
+                Annuler la génération
+              </button>
+              <p className="text-center text-xs text-ink-500">
+                {language === "French" ? "Génération en cours sur le GPU…" : "Synthesizing on GPU…"}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              disabled={!text.trim()}
+              className="w-full py-4 sm:py-3.5 rounded-xl bg-gradient-to-r from-accent-600 to-accent-500 text-white font-semibold text-lg shadow-2xl shadow-accent-500/30 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[52px]"
+            >
+              <svg className="inline w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              {language === "French" ? "Générer l'audio" : "Generate Audio"}
             </button>
           )}
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 p-3.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm animate-fade-in">
-              {error}
-            </div>
-          )}
-
-          {/* Output */}
-          {currentAudio && !loading && (
-            <div className="mt-5 p-4 rounded-xl bg-ink-900/60 border border-ink-700 animate-fade-in">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-xs text-ink-400">
-                  <span className="chip">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    {(currentAudio.size / 1024).toFixed(1)} KB
-                  </span>
-                  <span>·</span>
-                  <span>Generated in {(currentAudio.durationMs / 1000).toFixed(1)}s</span>
-                </div>
-                <button
-                  onClick={() => downloadAudio(currentAudio.url, `qwen3-tts-${speaker}-${Date.now()}.wav`)}
-                  className="btn-ghost text-xs py-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                  </svg>
-                  Download
-                </button>
-              </div>
-              <audio src={currentAudio.url} controls autoPlay className="w-full" />
-            </div>
-          )}
-
-          {/* History */}
-          {history.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2">
-                Recent
-              </h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {history.map((h) => (
-                  <div
-                    key={h.id}
-                    className="p-3 rounded-lg bg-ink-900/40 border border-ink-800 hover:border-ink-700 transition"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="chip text-[10px]">{h.language}</span>
-                      <span className="chip text-[10px]">{h.speaker}</span>
-                      <span className="text-[10px] text-ink-500 ml-auto">
-                        {new Date(h.createdAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-ink-300 line-clamp-2 mb-2">{h.text}</p>
-                    <audio src={h.url} controls className="w-full h-8" />
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setHistory([])}
-                className="text-[10px] text-ink-500 hover:text-ink-300 mt-2"
-              >
-                Clear history
-              </button>
-            </div>
-          )}
-        </section>
-      </main>
-
-      <footer className="border-t border-ink-800/60 py-4 text-center text-xs text-ink-500">
-        Qwen3-TTS · Frontend on Cloudflare Pages · GPU on Modal · Apache 2.0
-      </footer>
+        </div>
+      </div>
 
       <ApiConfigModal
         open={showSettings}
