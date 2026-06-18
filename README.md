@@ -68,47 +68,60 @@ The frontend's `npm install` puts `wrangler` on your PATH.
 
 ## Deploy
 
-### A. Deploy the Modal backend
+### A. Deploy the Modal backend ✅ ALREADY DEPLOYED
+
+The Modal backend is already live at:
+
+**`https://joshm071197--qwen3-tts-fastapi-app.modal.run`**
+
+Smoke test results:
+- `/health` → `{"status":"ok","model_loaded":true}`
+- `/speakers` → 9 speakers (Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee)
+- `/languages` → 10 languages
+- `/synthesize` (Ryan, English) → 457.5 KB WAV, 9.76s @ 24kHz, real audio confirmed
+- Warm call: 13.7s for 210KB output
+- Chinese (Vivian): 7.5s for 146KB
+
+Sample audio: [`samples/ryan-english-hello.wav`](samples/ryan-english-hello.wav) (458 KB)
+
+To redeploy after code changes:
 
 ```bash
 cd modal-backend
 modal deploy app.py
 ```
 
-Modal will print your endpoint URL. It looks like:
-
-```
-https://<your-username>--qwen3-tts-fastapi-app.modal.run
-```
-
-**First deploy is slow (~10 min)** because Modal builds the image with
-`torch` + `qwen-tts` (~3GB image). Subsequent deploys use the cache (~30s).
-
-Test it works:
-
-```bash
-curl https://<your-username>--qwen3-tts-fastapi-app.modal.run/health
-# → {"status":"ok","model_loaded":true}
-
-curl https://<your-username>--qwen3-tts-fastapi-app.modal.run/speakers
-# → {"speakers":[...]}
-```
+**First deploy was slow (~10 min)** because Modal builds the image with
+`torch` + `qwen-tts` (~3GB image). Subsequent deploys use the cache (~3-30s).
 
 ### B. Deploy the frontend to Cloudflare Pages
 
-```bash
-cd frontend
-# Paste your Modal URL here (between the quotes):
-# Option 1: edit wrangler.toml → VITE_API_URL
-# Option 2: set env var when deploying
-VITE_API_URL="https://<your-username>--qwen3-tts-fastapi-app.modal.run" \
-  npm run deploy
-```
+The repo is ready for Cloudflare Pages to deploy directly from Git.
 
-`wrangler` will open a browser the first time to link your Cloudflare account.
-After auth, it creates a Pages project called `qwen3-tts-webui` and uploads `dist/`.
+**1. Go to**: https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
 
-Your app will be live at `https://qwen3-tts-webui.pages.dev` in ~30 seconds.
+**2. Select repo**: `joshuaM07/qwen3-tts-webui`
+
+**3. Build settings:**
+   - **Framework preset**: Vite
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Root directory**: `frontend`
+
+**4. Environment variables** (Advanced → Add variable):
+   - **Name**: `VITE_API_URL`
+   - **Value**: `https://joshm071197--qwen3-tts-fastapi-app.modal.run`
+   - Also add it to **Preview** environment if you want it on PR previews.
+
+**5. Click Save and Deploy.** First build takes ~30s, then it's live at `https://qwen3-tts-webui.pages.dev`.
+
+The `wrangler.toml` in the repo already has the URL baked in, so if you skip
+step 4 it'll still work — the env var just lets you change the backend
+without redeploying.
+
+> **Note**: The repo's `wrangler.toml` has the Modal URL pre-filled at
+> `frontend/wrangler.toml`. If you fork or change Modal workspaces, edit that
+> file or override with the `VITE_API_URL` env var.
 
 ### C. Or just run `deploy.sh` from the project root
 

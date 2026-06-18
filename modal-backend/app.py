@@ -98,11 +98,11 @@ class CloneRequest(BaseModel):
 @app.cls(
     gpu=GPU_CONFIG,
     volumes={"/models": model_volume},
-    container_idle_timeout=300,  # keep warm 5 min for snappy responses
-    allow_concurrent_inputs=4,   # 4 parallel requests per container
+    scaledown_window=300,  # keep warm 5 min for snappy responses
     timeout=600,
     memory=16384,
 )
+@modal.concurrent(max_inputs=4)  # 4 parallel requests per container
 class TTSService:
     @modal.enter()
     def load_model(self):
@@ -115,7 +115,7 @@ class TTSService:
             MODEL_CUSTOM,
             device_map="cuda:0",
             dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            attn_implementation="sdpa",  # PyTorch native, no extra deps
         )
         print(f"[{APP_NAME}] model ready")
 
@@ -159,11 +159,11 @@ class TTSService:
 @app.cls(
     gpu=GPU_CONFIG,
     volumes={"/models": model_volume},
-    container_idle_timeout=300,
-    allow_concurrent_inputs=2,
+    scaledown_window=300,
     timeout=600,
     memory=16384,
 )
+@modal.concurrent(max_inputs=2)
 class TTSCloneService:
     @modal.enter()
     def load_model(self):
@@ -175,7 +175,7 @@ class TTSCloneService:
             MODEL_BASE,
             device_map="cuda:0",
             dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            attn_implementation="sdpa",  # PyTorch native, no extra deps
         )
         print(f"[{APP_NAME}] clone model ready")
 
