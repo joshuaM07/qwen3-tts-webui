@@ -9,8 +9,7 @@
     "typecheck": "tsc -b --noEmit",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=qwen3-tts-webui",
-    "deploy:preview": "npm run build && wrangler pages deploy dist --project-name=qwen3-tts-webui --branch=preview"
+    "deploy:pages": "wrangler pages deploy dist --project-name=qwen3-tts-webui --commit-dirty=true"
   },
   "dependencies": {
     "react": "^18.3.1",
