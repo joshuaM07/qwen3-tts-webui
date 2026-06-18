@@ -1,0 +1,8 @@
+name = "qwen3-tts-webui"
+compatibility_date = "2025-01-01"
+
+# Serve ./dist as static assets — no Worker script needed.
+# Tells wrangler: "this is a static site, deploy the build output directory".
+[assets]
+directory = "./dist"
+binding = "ASSETS"

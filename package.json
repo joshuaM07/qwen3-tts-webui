@@ -9,6 +9,7 @@
     "typecheck": "tsc -b --noEmit",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy:workers": "wrangler deploy",
     "deploy:pages": "wrangler pages deploy dist --project-name=qwen3-tts-webui --commit-dirty=true"
   },
   "dependencies": {
