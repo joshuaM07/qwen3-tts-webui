@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, fileToBase64, Speaker } from "./lib/api";
+import { api, API_BASE_URL, fileToBase64, Speaker } from "./lib/api";
 
 // ---------------------------------------------------------------------------
 // Local speaker metadata — keep in sync with modal-backend/app.py SPEAKERS list.
@@ -169,7 +169,11 @@ function SpeakerAvatar({ speaker }: { speaker: Speaker }) {
 // Main studio
 // ---------------------------------------------------------------------------
 export default function App() {
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem("qwen3-tts-api-url") || "");
+  // Start with the baked-in default URL. localStorage can override at runtime.
+  const [apiUrl, setApiUrl] = useState<string>(
+    () => localStorage.getItem("qwen3-tts-api-url") || API_BASE_URL
+  );
+  const effectiveApiUrl = apiUrl || API_BASE_URL;
   const [showSettings, setShowSettings] = useState(false);
   const [text, setText] = useState(SAMPLE_TEXTS[1].text);
   const [language, setLanguage] = useState("English");
@@ -218,7 +222,7 @@ export default function App() {
       setError("Please enter some text to synthesize.");
       return;
     }
-    if (!apiUrl) {
+    if (!effectiveApiUrl) {
       setShowSettings(true);
       setError("Configure your Modal backend URL first (Settings → Modal API URL).");
       return;
@@ -282,7 +286,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Header onConfigureApi={() => setShowSettings(true)} />
 
-      {!apiUrl && (
+      {!effectiveApiUrl && (
         <div className="bg-accent-700/20 border-b border-accent-700/40 text-center py-2.5 px-4 text-sm text-accent-200">
           ⚠ Backend not configured.{" "}
           <button

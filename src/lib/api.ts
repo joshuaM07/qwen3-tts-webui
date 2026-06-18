@@ -4,9 +4,9 @@
 // Public Modal endpoint — baked in as the default. Can be overridden at
 // build time by setting VITE_API_URL, or at runtime via the ⚙ Settings
 // panel (stored in localStorage).
-const DEFAULT_API_URL = "https://joshm071197--qwen3-tts-fastapi-app.modal.run";
+export const DEFAULT_API_URL = "https://joshm071197--qwen3-tts-fastapi-app.modal.run";
 
-const API_URL: string = (import.meta.env.VITE_API_URL as string)?.trim() || DEFAULT_API_URL;
+export const API_BASE_URL: string = (import.meta.env.VITE_API_URL as string)?.trim() || DEFAULT_API_URL;
 
 export interface Speaker {
   id: string;
@@ -35,6 +35,10 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
+  }
+
+  get url(): string {
+    return this.baseUrl;
   }
 
   get isConfigured(): boolean {
@@ -163,7 +167,7 @@ class ApiClient {
   }
 }
 
-export const api = new ApiClient(API_URL);
+export const api = new ApiClient(API_BASE_URL);
 
 // Helper: read a File as base64 (no data: prefix)
 export function fileToBase64(file: File): Promise<string> {

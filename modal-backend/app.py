@@ -22,8 +22,8 @@ from pydantic import BaseModel, Field
 # Config
 # -----------------------------------------------------------------------------
 APP_NAME = "qwen3-tts"
-MODEL_CUSTOM = "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"  # 0.9B, 9 preset speakers
-MODEL_BASE = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"  # 0.9B, voice cloning
+MODEL_CUSTOM = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"  # 1.7B, 9 preset speakers — better quality
+MODEL_BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"  # 1.7B, voice cloning
 
 # L4 = 24GB VRAM, ~$0.80/hr. Falls back to A10G then T4 if L4 unavailable.
 GPU_CONFIG = "L4"
