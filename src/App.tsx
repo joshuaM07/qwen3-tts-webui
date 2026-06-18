@@ -254,7 +254,9 @@ export default function App() {
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 95_000);
+    // Long text takes longer; scale timeout by length. ~3s/char on L4 with 1.7B.
+    const timeoutMs = Math.min(300_000, 30_000 + Math.ceil(text.length / 50) * 1000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const result = await api.synthesize({
@@ -279,7 +281,7 @@ export default function App() {
       setHistory((h) => [item, ...h].slice(0, 10));
     } catch (e) {
       if ((e as Error).name === "AbortError") {
-        setError("Génération expirée (95s). Le GPU démarre peut-être — réessayez.");
+        setError(`Génération expirée. Le texte est peut-être trop long pour le timeout. Réessayez ou réduisez le texte.`);
       } else {
         setError((e as Error).message);
       }
@@ -376,11 +378,11 @@ export default function App() {
             onChange={(e) => setText(e.target.value)}
             placeholder="Écrivez ou collez votre texte ici..."
             disabled={loading}
-            maxLength={2000}
+            maxLength={2500}
             style={{ fontFamily: "'Lora', Georgia, serif" }}
           />
           <div className="flex items-center justify-between mt-2 text-xs text-ink-500">
-            <span>{wordCount} mots · {charCount}/2000</span>
+            <span>{wordCount} mots · {charCount}/2500</span>
             {text && (
               <button
                 onClick={() => setText("")}

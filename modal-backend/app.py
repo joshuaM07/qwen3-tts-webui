@@ -75,10 +75,10 @@ app = modal.App(APP_NAME, image=image)
 # Request / response models
 # -----------------------------------------------------------------------------
 class SynthesizeRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000, description="Text to synthesize")
-    language: str = Field("English", description="One of LANGUAGES")
-    speaker: str = Field("Ryan", description="One of SPEAKERS ids")
-    instruct: str = Field("", description="Style instruction, e.g. 'Speak in a happy tone'")
+    text: str = Field(..., min_length=1, max_length=2500, description="Text to synthesize (≈400 words). Limited by Modal's 300s input timeout on the 1.7B model.")
+    language: str = Field("French", description="One of LANGUAGES")
+    speaker: str = Field("Serena", description="One of SPEAKERS ids")
+    instruct: str = Field("", description="Style instruction, e.g. 'Speak in a calm soothing tone'")
     # Advanced knobs (optional)
     top_k: int = Field(50, ge=1, le=100)
     top_p: float = Field(1.0, ge=0.0, le=1.0)
@@ -86,7 +86,7 @@ class SynthesizeRequest(BaseModel):
 
 
 class CloneRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000)
+    text: str = Field(..., min_length=1, max_length=2500)
     language: str = Field("English")
     ref_audio_b64: str = Field(..., description="Base64-encoded reference WAV (3-10s)")
     ref_text: str = Field("", description="Transcript of reference audio (helps quality)")
@@ -99,7 +99,7 @@ class CloneRequest(BaseModel):
     gpu=GPU_CONFIG,
     volumes={"/models": model_volume},
     scaledown_window=300,  # keep warm 5 min for snappy responses
-    timeout=600,
+    timeout=900,           # per-input timeout (15min — handles long devotionals)
     memory=16384,
 )
 @modal.concurrent(max_inputs=4)  # 4 parallel requests per container

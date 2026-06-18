@@ -81,8 +81,13 @@ class ApiClient {
       return { url: cached, blob, durationMs: 0 };
     }
 
+    // Long text takes longer to synthesize; scale timeout by length.
+    // ~3s/char on L4 with 1.7B model — be generous, but cap at 5min.
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      Math.min(300_000, 30_000 + Math.ceil(req.text.length / 50) * 1000)
+    );
 
     const start = performance.now();
     try {
