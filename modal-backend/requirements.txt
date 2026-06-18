@@ -1,0 +1,8 @@
+modal>=0.64.0
+qwen-tts>=1.0.0
+torch==2.6.0
+torchvision==0.21.0
+torchaudio==2.6.0
+soundfile
+fastapi[standard]
+pydantic>=2

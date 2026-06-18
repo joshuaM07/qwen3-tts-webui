@@ -1,0 +1,11 @@
+name = "qwen3-tts-webui"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
+
+[vars]
+# After deploying the Modal backend, paste its URL here so the frontend knows where to POST.
+# Example: VITE_API_URL = "https://your-username--qwen3-tts-fastapi-app.modal.run"
+VITE_API_URL = ""

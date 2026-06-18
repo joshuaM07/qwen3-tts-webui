@@ -1,0 +1,30 @@
+{
+  "name": "qwen3-tts-webui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Qwen3-TTS Web UI — frontend hosted on Cloudflare Pages, GPU backend on Modal",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc -b --noEmit",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=qwen3-tts-webui",
+    "deploy:preview": "npm run build && wrangler pages deploy dist --project-name=qwen3-tts-webui --branch=preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "wrangler": "^3.91.0"
+  }
+}
